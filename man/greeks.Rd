@@ -6,24 +6,26 @@
 \alias{greeks2}
 \title{Calculate option Greeks}
 \usage{
-bsopt(s, k, v, r, tt, d)
 greeks(f)
 # must used named list entries:
 greeks2(fn, ...)
+bsopt(s, k, v, r, tt, d)
 }
 \arguments{
-\item{s}{Stock price}
+\item{s}{Price of underlying asset}
 
 \item{k}{Strike price of the option}
 
-\item{v}{Volatility of the stock, defined as the annualized
-standard deviation of the continuously-compounded return}
+\item{v}{Volatility of the underlying asset, defined as the
+annualized standard deviation of the continuously-compounded
+return}
 
 \item{r}{Annual continuously-compounded risk-free interest rate}
 
 \item{tt}{Time to maturity in years}
 
-\item{d}{Dividend yield, annualized, continuously-compounded}
+\item{d}{Dividend yield of the underlying asset, annualized,
+continuously-compounded}
 
 \item{fn}{Pricing function name, not in quotes}
 
@@ -51,10 +53,16 @@ multiples of one another).
 }
 \details{
 Numerical derivatives are calculated using a simple
-difference. This can create numerical problems in edge cases. It
-might be good to use the package numDeriv or some other more
-sophisticated calculation, but the current approach works well with
-vectorization.
+    difference. This can create numerical problems in edge
+    cases. It might be good to use the package numDeriv or some
+    other more sophisticated calculation, but the current approach
+    works well with vectorization.
+}
+\note{
+The pricing function being passed to the greeks function must
+    return a numeric vector. For example, \code{callperpetual} must
+    be called with the option \code{showbarrier=FALSE} (the
+    default).
 }
 \examples{
 s=40; k=40; v=0.30; r=0.08; tt=0.25; d=0;
@@ -66,15 +74,18 @@ bsopt(s, c(35, 40, 45), v, r, tt, d)
 bsopt(s, c(35, 40, 45), v, r, tt, d)[['Call']][c('Delta', 'Gamma'), ]
 
 ## plot Greeks for calls and puts for 500 different stock prices
-## Unfortunately, this plot will most likely not display in RStudio;
-## it will generate a "figure margins too large" error
+##
+## This plot can generate a "figure margins too large" error
+## in Rstudio
 k <- 100; v <- 0.30; r <- 0.08; tt <- 2; d <- 0
 S <- seq(.5, 250, by=.5)
-x <- bsopt(S, k, v, r, tt, d)
-par(mfrow=c(4, 4))  ## create a 4x4 plot
-for (i in c('Call', 'Put')) {
-    for (j in rownames(x[[i]])) {  ## loop over greeks
-        plot(S, x[[i]][j, ], main=paste(i, j), ylab=j, type='l')
+Call <- greeks(bscall(S, k, v, r, tt, d))
+Put <- greeks(bsput(S, k, v, r, tt, d))
+y <- list(Call=Call, Put=Put)
+par(mfrow=c(4, 4), mar=c(2, 2, 2, 2))  ## create a 4x4 plot
+for (i in names(y)) {
+    for (j in rownames(y[[i]])) {  ## loop over greeks
+        plot(S, y[[i]][j, ], main=paste(i, j), ylab=j, type='l')
     }
 }
 }

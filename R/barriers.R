@@ -119,6 +119,17 @@ cashdicall <- function(s, k, v, r, tt, d, H) {
                              .nd8(s, k, v, r, tt, d, H*pmin(H/k, 1))))
 }
 
+cashdicall2 <- function(s, k, v, r, tt, d, H) {
+    ##    tmp <- data.frame(s, k, v, r, tt, d, H)
+    ##   for (i in names(tmp)) {assign(i, tmp[, i])}
+    knockedin <- (s <= H)
+    knockedin*cashcall(s, k, v, r, tt, d) +
+        (1-knockedin)*exp(-r*tt)*(.nd2(s, k, v, r, tt, d) -
+                       .nd6(s, k, v, r, tt, d, pmax(k, H)) +
+                       (H/s)^(2*(r-d)/(v^2)-1)*
+                             .nd8(s, k, v, r, tt, d, H*pmin(H/k, 1)))
+}
+
 #' @export
 #' @family Barriers
 assetdicall <- function(s, k, v, r, tt, d, H) {
@@ -128,9 +139,6 @@ assetdicall <- function(s, k, v, r, tt, d, H) {
 #' @export
 #' @family Barriers
 cashdocall <- function(s, k, v, r, tt, d, H) {
-##    tmp <- vectorizesh(s, H)
-##    s <- tmp[[1]]
-##    h <- tmp[[2]]
     cashcall(s, k, v, r, tt, d) -
         cashdicall(s, k, v, r, tt, d, H)
 }
@@ -448,3 +456,24 @@ dr <-  function(s, v, r, tt, d, H, perpetual=FALSE) {
     return(val)
 }
 
+#' @export
+callperpetual <- function(s, k, v, r, d, priceonly=TRUE) {
+    g <- (((r - d) / v^2 - 0.5)^2 + 2*r /v^2)^0.5
+    h1 <- 0.5 - (r-d) /v^2 + g
+    sbar <- k*h1/(h1-1)
+    val <- (pmax(sbar, s) - k)*ur(s=s, v=v, r=r, tt=1, d=d, H=sbar,
+                                  perpetual=TRUE)
+    if (priceonly) return(price=val)
+    else return(list(price=val, barrier=sbar))
+}
+
+#' @export
+putperpetual <- function(s, k, v, r, d, priceonly=TRUE) {
+    g <- (((r - d) / v^2 - 0.5)^2 + 2*r /v^2)^0.5
+    h2 <- 0.5 - (r-d) /v^2 - g
+    sbar <- k*h2 / (h2-1)
+    val <- (k - pmin(s, sbar))*dr(s=s, v=v, r=r, tt=1, d=d, H=sbar,
+                                  perpetual=TRUE)
+    if (priceonly) return(price=val)
+    else return(list(price=val, barrier=sbar))
+}

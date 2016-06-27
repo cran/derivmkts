@@ -15,26 +15,31 @@
 #' @aliases bsopt greeks greeks2
 #'
 #' @return A named list of Black-Scholes option prices and Greeks.
-#'
+#' @note The pricing function being passed to the greeks function must
+#'     return a numeric vector. For example, \code{callperpetual} must
+#'     be called with the option \code{showbarrier=FALSE} (the
+#'     default).
 #' @details Numerical derivatives are calculated using a simple
-#' difference. This can create numerical problems in edge cases. It
-#' might be good to use the package numDeriv or some other more
-#' sophisticated calculation, but the current approach works well with
-#' vectorization.
+#'     difference. This can create numerical problems in edge
+#'     cases. It might be good to use the package numDeriv or some
+#'     other more sophisticated calculation, but the current approach
+#'     works well with vectorization.
 #' 
 #' @usage
-#' bsopt(s, k, v, r, tt, d)
 #' greeks(f)
 #' # must used named list entries:
 #' greeks2(fn, ...)
+#' bsopt(s, k, v, r, tt, d)
 #'
-#' @param s Stock price
+#' @param s Price of underlying asset
 #' @param k Strike price of the option
-#' @param v Volatility of the stock, defined as the annualized
-#'     standard deviation of the continuously-compounded return
+#' @param v Volatility of the underlying asset, defined as the
+#'     annualized standard deviation of the continuously-compounded
+#'     return
 #' @param r Annual continuously-compounded risk-free interest rate
 #' @param tt Time to maturity in years
-#' @param d Dividend yield, annualized, continuously-compounded
+#' @param d Dividend yield of the underlying asset, annualized,
+#'     continuously-compounded
 #' @param fn Pricing function name, not in quotes
 #' @param f Fully-specified option pricing function, including inputs
 #'     which need not be named. For example, you can enter
@@ -52,15 +57,18 @@
 #' bsopt(s, c(35, 40, 45), v, r, tt, d)[['Call']][c('Delta', 'Gamma'), ]
 #'
 #' ## plot Greeks for calls and puts for 500 different stock prices
-#' ## Unfortunately, this plot will most likely not display in RStudio;
-#' ## it will generate a "figure margins too large" error
+#' ##
+#' ## This plot can generate a "figure margins too large" error
+#' ## in Rstudio
 #' k <- 100; v <- 0.30; r <- 0.08; tt <- 2; d <- 0
 #' S <- seq(.5, 250, by=.5)
-#' x <- bsopt(S, k, v, r, tt, d)
-#' par(mfrow=c(4, 4))  ## create a 4x4 plot
-#' for (i in c('Call', 'Put')) {
-#'     for (j in rownames(x[[i]])) {  ## loop over greeks
-#'         plot(S, x[[i]][j, ], main=paste(i, j), ylab=j, type='l')
+#' Call <- greeks(bscall(S, k, v, r, tt, d))
+#' Put <- greeks(bsput(S, k, v, r, tt, d))
+#' y <- list(Call=Call, Put=Put)
+#' par(mfrow=c(4, 4), mar=c(2, 2, 2, 2))  ## create a 4x4 plot
+#' for (i in names(y)) {
+#'     for (j in rownames(y[[i]])) {  ## loop over greeks
+#'         plot(S, y[[i]][j, ], main=paste(i, j), ylab=j, type='l')
 #'     }
 #' }
 
@@ -72,33 +80,62 @@ bsopt <- function(s, k, v, r, tt, d) {
     return(list(Call=xc, Put=xp))
 }
 
+
+## the focus so far has been on named vs unnamed parameters. We also
+## need to take care of implicit parameters Tue, Jun 21, 2016
 #' @export
 greeks <- function(f) {
-    ## This version uses a standard function call
+    ## match.call() returns (I think) a pairlist, where the first
+    ## argument is the function and the second is what follows. By
+    ## extracting the second, we grab the function argument which in
+    ## this case is itself a pairlist (namely the function within
+    ## greeks()). By setting the first element of this
+    ## (match.call()[[2]][[1]] to NULL we are left with the arguments
+    ## in the wrapped function, which are in the form of a list
     args <- match.call()[[2]] ## get f and arguments
     funcname <- as.character(args[[1]])
-    args[[1]] <- NULL  ## eliminate function name, leaving only the
-                       ## function arguments
-    fnames <- names(formals(funcname)) ## arguments to function
-    if (sum(names(args)=='') > 0) {
-        shared <- intersect(names(args), fnames)
-        names(args)[names(args)==''] <- setdiff(fnames, shared)
+    args[[1]] <- NULL  ## eliminate function name, leaving function
+                       ## arguments as only remaining component
+    fnames <- names(formals(funcname)) ## list of defined arguments
+    ## following handles case of perpetual options
+    includetheta <- ("tt" %in% fnames)
+    ## following logic handles the case where some arguments are
+    ## named, some are unnamed, and the arguments are out of order,
+    ## i.e.  the named arguments are in some arbitrary order.  If the
+    ## function is defined as f(a, b, c), if it's called as
+    ## f(c=3,5,2), the unused arguments are assigned to 5 and 2 in the
+    ## order defined (a then b). The following code fills them in as
+    ## such. The code also keeps counts the arguments in the call to
+    ## handle the case of implicit parameters
+    numargs <- length(args)
+    if (length(names(args)) == 0) {
+        ## all arguments unnamed, hence in the correct order
+        names(args) <- fnames[1:numargs]
     } else {
-        names(args) <- fnames
+        numunnamedargs <- sum(names(args) == "")
+        ##  restrict range in setdiff to account for implicit
+        ##  parameters in fnames but not in function call
+        names(args)[which(names(args) == "")] <-
+            setdiff(fnames, names(args))[1:numunnamedargs] 
     }
-
-    x <<- as.list(args)
-    ## Issue: When an argument is a vector, the list representation
-    ## stores the values as a language object (an unevaluated
-    ## call). In order to extract the values, need to use "eval
-    ## x[[i]]".
+    x <- as.list(args)
+    ## some elements of x will have had explicit values in the call
+    ## (e.g., "s=40"), while others will have inherited values from
+    ## the environment (e.g. "s=s0"). The latter are unevaluated
+    ## language objects, so need to assign a value using eval(). 
     for (i in 1:length(x)) x[[i]] <- eval(x[[i]])
+    ## make sure that vectors have lengths appropriate for recycling
     .checkListRecycle(x)
+    xlength <- sapply(x, length)
+    xmaxlength <- max(xlength)
+    includetheta <- rep(includetheta, xmaxlength)
     prem  <-  do.call(funcname, x)
     delta <-  .FirstDer(funcname, 's', x)
     vega  <-  .FirstDer(funcname, 'v', x)/100
     rho   <-  .FirstDer(funcname, 'r', x)/100
-    theta <- -.FirstDer(funcname, 'tt', x)/365
+    theta <- ifelse(includetheta,
+                    -.FirstDer(funcname, 'tt', x)/365,
+                    NA)
     psi   <-  .FirstDer(funcname, 'd', x)/100
     elast <-  x[['s']]*delta/prem
     gamma <-  .SecondDer(funcname, 's', x)
@@ -109,15 +146,11 @@ greeks <- function(f) {
     rownames(y) <- c("Price", "Delta", "Gamma", "Vega", "Rho", "Theta",
                      "Psi", "Elasticity")
 
-    ## In the following, this tests to see if there is variation in
-    ## any inputs (is xmaxlength > 1). If so, is there variation in
-    ## more than one input (length(maxarg) > 1). The column names are
-    ## constructed as appropriate in each case.
-
-    ## are any parameters input as vectors?
-    xlength <- lapply(x, length) ## how many of each input?
-    xmaxlength <- max(unlist(lapply(x, length))) ## max # of inputs
-    arggt1 <- which(xlength > 1)
+    ## The following tests to see if there is variation in any inputs
+    ## (is xmaxlength > 1). If so, is there variation in more than one
+    ## input (length(maxarg) > 1). The column names are constructed 
+    ## in each case to state the parameter values for that column.
+    arggt1 <- which(xlength > 1) # which inputs are vectors
     if (xmaxlength == 1) {
         colnames(y) <- funcname
     } else {
@@ -139,13 +172,15 @@ greeks2 <- function(fn, ...) {
     ## this function so that inputs need not be named
     if (is.list(c(...))) x <- c(...)
     else x <- list(...)
+    includetheta <- ('tt' %in% names(x))
     ## make sure recycling rule will work, stop if not
     .checkListRecycle(x)
     prem  <-  do.call(fn, x)
     delta <-  .FirstDer(fn, 's', x)
     vega  <-  .FirstDer(fn, 'v', x)/100
     rho   <-  .FirstDer(fn, 'r', x)/100
-    theta <- -.FirstDer(fn, 'tt', x)/365
+    if (includetheta) theta <- -.FirstDer(fn, 'tt', x)/365
+    else theta <- NA
     psi   <-  .FirstDer(fn, 'd', x)/100
     elast <-  x[['s']]*delta/prem
     gamma <-  .SecondDer(fn, 1, x)
@@ -208,7 +243,7 @@ greeks2 <- function(fn, ...) {
 }
 
 .checkListRecycle <- function(x) {
-    ## function tests whether list of vectors can work with recylcing
+    ## function tests whether list of vectors can work with recycling
     ## without throwing a warning. We can do this by unlisting the
     ## elements, summing them, and checking for an error. (The summing
     ## will require recycling to work; if it doesn't, there is a
