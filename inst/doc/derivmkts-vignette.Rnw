@@ -3,8 +3,10 @@
 \documentclass{article}
 \usepackage{textcomp}
 \usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
 \usepackage{listings}
-\usepackage[linktocpage=TRUE, colorlinks=TRUE]{hyperref}
+\usepackage[linktocpage=TRUE, colorlinks=TRUE, citecolor=red]{hyperref}
 \usepackage{natbib}
     \lstset{
     language=R,
@@ -32,6 +34,7 @@
 \lstMakeShortInline{|}
 
 <<echo=FALSE, message=FALSE, warning=FALSE>>=
+rm(list=ls())
 library(highlight)
 library(knitr)
 ##homedir <- '/home/rmcd/tex/d67/Rtutorial/'
@@ -49,6 +52,7 @@ opts_knit$set(highlight = TRUE,
               prompt=TRUE,
               renderer=renderer_latex(document=FALSE),
               size='footnotesize')
+curr <- function(amt)  formatC(amt, format='f', digits=2)
 @
 
 
@@ -59,6 +63,7 @@ opts_knit$set(highlight = TRUE,
 
 <<echo=FALSE>>=
 library(derivmkts)
+library(mnormt)
 library(markdown)
 
 opts_chunk$set(collapse=TRUE)
@@ -88,11 +93,12 @@ R, but this package has several distinguishing features:
 
 
 Table \ref{tab:bslist} lists the Black-Scholes related functions in
-the package.  The functions |bscall|, |bsput|, and |bsopt| provide
-basic pricing of European calls and puts. There are also options with
-binary payoffs: cash-or-nothing and asset-or-nothing options. All of
-these functions are vectorized. The function |bsopt| by default
-provides option greeks. Here are some examples:
+the package.\footnote{See \citet{black/scholes:73} and
+  \citet{merton:73-bell}.}  The functions |bscall|, |bsput|, and
+|bsopt| provide basic pricing of European calls and puts. There are
+also options with binary payoffs: cash-or-nothing and asset-or-nothing
+options. All of these functions are vectorized. The function |bsopt|
+by default provides option greeks. Here are some examples:
 
 <<>>=
 s <- 100; k <- 100; r <- 0.08; v <- 0.30; tt <- 2; d <- 0
@@ -121,7 +127,10 @@ bsput(s, c(95, 100, 105), v, r, tt, d)
 
 \section{Barrier Options}
 
-There are pricing functions for the following barrier options:
+There are pricing functions for the following barrier
+options:\footnote{See \citet[][p. 175]{merton:73-bell} for the
+  first derivation of a barrier option pricing formula and
+  \citet[][Chapter 14]{mcdonald:derivs:13} for an overview.}
 
 \begin{itemize}
 \item down-and-in and down-and-out barrier binary options
@@ -150,19 +159,23 @@ underlying, which is either the asset or \$1: cash:
 <<>>=
 H <- 115
 bscall(s, c(80, 100, 120), v, r, tt, d)
+## Up-and-in call
 uicall(s, c(80, 100, 120), v, r, tt, d, H)
 bsput(s, c(80, 100, 120), v, r, tt, d)
+## Up-and-out put
 uoput(s, c(80, 100, 120), v, r, tt, d, H)
 @
 
 \section{Perpetual American Options}
 
 The functions \lstinline{callperpetual} and \lstinline{putperetual}
-price infinitely-lived American options. The pricing formula assumes
-that all inputs (risk-free rate, volatility, dividend yield) are
-fixed. This is of course usual with the basic option pricing formulas,
-but it is more of a conceptual stretch for an infinitely-lived option
-than for a 3-month option.  
+price infinitely-lived American
+options.\footnote{\citet{merton:73-bell} derived the price of a
+  perpetual American put.} The pricing formula assumes that all inputs
+(risk-free rate, volatility, dividend yield) are fixed. This is of
+course usual with the basic option pricing formulas, but it is more of
+a conceptual stretch for an infinitely-lived option than for a 3-month
+option.
 
 In order for the option to have a determined value, the dividend yield
 on the underlying asset must be positive if the option is a call. If
@@ -189,9 +202,12 @@ callperpetual(s, c(95, 100, 105), v, r, d, showbarrier=TRUE)
 
 \section{Option Greeks}
 
-Greeks for vanilla and barrier options can be computed using the
-|greeks| function, which is a wrapper for any pricing function that
-returns the option price and which uses the default naming of
+Options greeks are mathematical derivatives of the option price with
+respect to inputs; see \citet[][Chapters 12 and
+13]{mcdonald:derivs:13} for a discussion of the greeks for vanilla
+options. Greeks for vanilla and barrier options can be computed using
+the |greeks| function, which is a wrapper for any pricing function
+that returns the option price and which uses the default naming of
 inputs.\footnote{In this version of the package, I have two
   alternative functions that return Greeks:
   \begin{itemize}
@@ -272,7 +288,10 @@ for (i in names(y)) {
 
 \section{Binomial Pricing of European and American Options}
 
-There are two functions related to binomial option pricing:
+There are two functions related to binomial option
+pricing:\footnote{See \citet{cox/ross/rubinstein:79},
+  \citet{rendleman/bartter:79-jf}, and \citet[][Chapter
+  11]{mcdonald:derivs:13}.}
 \begin{description}
 \item[binomopt] computes prices of American and European calls and
   puts. The function has three optional parameters that control output:
@@ -311,18 +330,17 @@ binomopt(s, k, v, r, tt, d, nstep=3, returntrees=TRUE, putopt=TRUE)
 \section{Asian Options}
 
 There are analytical functions for valuing geometric Asian options and
-Monte Carlo routines for valuing arithmetic Asian options. Be aware
-that the \lstinline{greeks()} function at this time will not work
-automatically with geometric Asian options nor (for different reasons)
-with arithmetic Asian options. I plan to address this in a future
-release.\footnote{At this time the \lstinline{greeks()} function will
-  not work with options valued using Monte Carlo. The reason is that
-  each invocation of the pricing function will start with a different
-  random number seed, resulting in some price variation that is due
-  solely to random variation. Random number generation and setting the
-  seed is a global change. In a future release I hope to address this
-  by saving and restoring the seed within the greeks function. For the
-  curious,
+Monte Carlo routines for valuing arithmetic Asian
+options.\footnote{See \citet{kemna/vorst:90}.} Be aware that the
+\lstinline{greeks()} function at this time will not work with the
+Monte Carlo valuation for arithmetic Asian options. I plan to address
+this in a future release.\footnote{As the functions are currently
+  written, each invocation of the pricing function will start with a
+  different random number seed, resulting in price variation that is
+  due solely to random variation. Moreover, random number generation
+  changes the random number seed globally. In a future release I
+  hope to address this by saving and restoring the seed within the
+  greeks function. For the curious,
   \href{http://stackoverflow.com/questions/14324096/setting-seed-locally-not-globally-in-r}{a
     Stackoverflow post} discusses this issue.}
 
@@ -363,11 +381,136 @@ regression coefficient used in the control variate correction:
 arithavgpricecv(s, k, v, r, tt, d, 3, numsim=5000)
 
 @ 
+
+\section{Compound Options}
+
+A compound option is an option where the underlying asset is an
+option.\footnote{See \citet{geske:79} and \citet[][Chapter
+  14]{mcdonald:derivs:13}.} The terminology associated with compound
+options can be confusing, so it may be easiest to start with an
+example. 
+
+Figure \ref{fig:compoundopt} is a timeline for a compound
+option that is an option to buy a put. The compound option expires at
+$t_{1}$ and the put expires at $t_{2}$. The owner of the compound
+option only acquires the put if at time $t_{1}$ it is worth at least
+$k_{co}$, and only exercises the put if at time $t_{2}$ the stock
+price is less than $k_{uo}$. 
+
+
+\begin{figure}
+  \centering
+  \begin{tikzpicture}
+    \newcommand{\start}{0}
+    \newcommand{\finish}{9}
+    \newcommand{\midpt}{(\finish/2-\start/2}
+  \newcommand{\tickheight}{0.3}
+    \draw (\start,0) -- (\finish,0);
+    \draw (0,\tickheight) -- (0, -\tickheight) 
+    node[below] {\begin{tabular}{c} Time 0 \\   Buy compound option \end{tabular}};
+    \draw (\midpt,\tickheight) -- (\midpt, -\tickheight)
+    node[below] 
+    {\begin{tabular}{c} 
+       Time $t_{1}$ \\ 
+       Compound exercise decision \\
+       Pay $k_{co}$ to buy put?
+     \end{tabular}
+   };
+   \draw (\finish, \tickheight) -- (\finish, -\tickheight)
+   node[below] {
+     \begin{tabular}{c}
+       Time $t_{2}$ \\
+       Put exercise decision\\
+       Sell stock for $k_{uo}$?
+     \end{tabular}
+   };
+  \end{tikzpicture}
+  \caption{The timeline for a compound option: a call to buy a
+    put. The compound option expires at time $t_{1}$ and the
+    underlying asset is a put option that expires at time
+    $t_{2}$. At time $t_{1}$, the owner decides whether to pay
+    $k_{co}$ to buy a put option which has time to expiration
+    $t_{2} - t_{1}$. At time $t_{2}$ the owner decides whether to
+    exercise the put, selling the stock for the strike price of $k_{uo}$.}
+  \label{fig:compoundopt}
+\end{figure}
+
+\subsection{Definition of a Compound Option}
+
+Based on the example, you can see that there are three prices
+associated with a compound option:
+\begin{itemize}
+\item The price of an underlying asset.
+\item The price of the underlying option, which is an option to buy or
+  sell the underlying asset (we will refer to this as the price of
+  the underlying option)
+\item The price of the compound option, which gives us the right to
+  buy or sell the underlying option
+\end{itemize}
+
+
+The definition of a compound option therefore requires that we specify
+
+\begin{itemize}
+\item whether the underlying option is a put or a call
+\item whether the compound option is a put or a call
+  
+ 
+\item the strike price at which you can exercise the underlying option
+  ($k_{uo}$)
+\item the strike price at which you can exercise the compound option ($k_{co}$)
+  
+\item the date at which you can exercise the compound option (first
+  exercise date, $t_{1}$)
+  
+\item the date at which you can exercise the underlying option expires, $t_{2}>t_{1}$.
+
+\end{itemize}
+Given these possibilities, you can have a call on a call, a put on a
+call, a call on a put, and a put on a put. The valuation procedure
+require calculating the underlying asset price at which you are
+indifferent about acquiring the underlying option.
+
+The price calculation requires computing the stock price above or
+below which you would optimally exercise the option at time
+$t_{1}$. 
+
+\subsection{Examples}
+
+As an example, consider the following inputs for a call option to buy
+a call option:
+<<>>=
+s <- 100; kuo <- 95; v <- 0.30; r <-  0.08; t1 <- 0.50; t2 <- 0.75; d <- 0
+kco <- 3.50
+
+calloncall(s, kuo, kco, v, r, t1, t2, d, returnscritical=TRUE)
+@ 
+
+With these parameters, after 6 months ($t_{1}=0.5$), the compound
+option buyer decides whether to pay \$\Sexpr{formatC(kco, format='f',
+  digits=2)} to acquire a 3-month call on the underlying asset. (The
+volatility of the underlying asset is \Sexpr{v}.) It will be
+worthwhile to pay the compound strike, \$\Sexpr{curr(kco)}, as long as
+the underlying asset price exceeds \Sexpr{calloncall(s, kuo, kco, v,
+  r, t1, t2, d, returnscritical=TRUE)['scritical']}. 
+
+Similarly, there is a put on the call, and a call and put on the
+corresponding put:
+
+<<>>=
+putoncall(s, kuo, kco, v, r, t1, t2, d, returnscritical=TRUE)
+callonput(s, kuo, kco, v, r, t1, t2, d, returnscritical=TRUE)
+putonput(s, kuo, kco, v, r, t1, t2, d, returnscritical=TRUE)
+
+@ 
+
+
 \section{Jumps and Stochastic Volatility}
 \label{sec:jumps}
 
 The \lstinline{mertonjump} function returns call and put prices for a
-stock that can jump discretely. A poisson process controls the
+stock that can jump discretely.\footnote{See \citet{merton/jfe/1976}.}
+A poisson process controls the
 occurrence of a jump and the size of the jump is lognormally
 distributed. The parameter \lstinline{lambda} is the mean number of
 jumps per year,  the parameter \lstinline{alphaj} is the log of the
@@ -476,266 +619,13 @@ binomplot(s, k, v, r, tt, d, nstep=40, american=TRUE, ylimval=c(75, 225))
 \appendix
 %\section{Appendices}
 
-\section{Vectorization}
-
-Where possible, I have tried to make sure that the pricing functions
-return vectors. This is automatic in many cases (for example, with the
-Black-Scholes formula), but there are situations in which achieving
-robust vectorization requires care when constructing a function. The
-purpose of this section is to explain the problems I encountered and
-the solutions I considered. Perhaps I overlooked the obvious or I am
-ignorant of some details of R. In either case I hope you will let me
-know! Otherwise, I hope this discussion is helpful to others.
-
-\subsection{Automatic Vectorization}
-
-<<>>=
-f = function(a, b, k) a*b + k
-f(3, 5, 1) 
-f(1:5, 5, 1) 
-f(1:6, 1:2, 1) 
-@ 
-
-In this example, R automatically vectorizes the multiplication using
-the recycling rule. It's worth noting that the third example, in which
-both arguments are vectorized, but with different length vectors, is
-an unusual programming construct.\footnote{You can produce the same
-  output in python using the itertools module.} This property makes it
-trivial to perform what-if calculations for an option pricing formula.
-
-\subsection{Limitations of Automatic Vectorization}
-
-A problem with automatic vectorization occurs when there are
-conditional statements. With barrier options, for example, it is
-necessary to check whether the asset price is past the barrier. R's
-\lstinline{if} statement is not vectorized, and the
-\lstinline{ifelse} function returns output that has the dimension of
-the conditional. 
-
-<<>>=
-cond1 <- function(a, b, k) {
-    if (a > b) {
-        a*b + k
-    } else {
-        k
-    }
-}
-cond1(5, 3, 1)
-cond1(5, 7, 1)
-cond1(3:7, 5, 1)
-
-@ 
-
-The third invocation of \lstinline{cond1} causes an error because the
-\lstinline{if} statement is not vectorized. This can be fixed by
-rewriting the conditional using \lstinline{ifelse}, which is
-vectorized. The following examples all compute correctly because if
-either $a$ or $b$ are vectors, the conditional statement is
-vectorized:
-
-<<>>=
-cond2 <- function(a, b, k) {
-    ifelse(a > b, 
-           a*b + k,  
-           k
-           )
-}
-cond2(5, 3, 1)
-cond2(5, 7, 1)
-cond2(3:7, 5, 1)
-
-@ 
-
-There will, however, be a problem if only $k$ is a vector.  Suppose we
-set $a=5$, $b=7$, $k=1:3$. Because $a < b$, we want to produce the
-output $1, 2, 3$. The following example does not work as desired
-because neither of the variables in the conditional ($a$ and $b$) are
-a vector. Thus the calculation is not vectorized:
-<<>>=
-cond2(5, 7, 1:3)
-@ 
-
-The \lstinline{ifelse} function returns output with the dimension of
-the conditional expression, which in this case is a vector of length
-1.
-
-\subsection{Three Solutions}
-
-One solution is to write the function so as to vectorize all the
-inputs to match the vector length of the longest input. There are at
-least three ways to do this.
-
-\subsubsection{Use a Booleans in Place of \lstinline{ifelse}}
-
-We can create a boolean variable that is true if $a > b$. This will
-then control which expression is returned:
-
-<<>>=
-cond2b <- function(a, b, k) {
-    agtb <- (a > b)
-    agtb*(a*b + k) + (1-agtb)*k
-}
-
-cond2b(5, 3, 1)
-cond2b(5, 7, 1)
-cond2b(3:7, 5, 1)
-cond2b(5, 7, 1:3)
-
-@ 
-
-Whether this solution works in other functions depends on the
-structure of the calculation and the nature of the output. In
-particular, if the value of a boolean controls the  data structure
-the function returns (a vector vs a list, for example), then this
-solution does not work.
-
-\subsubsection{Create a Data Frame}
-
-We can enforce the recycling rule for all variables by creating a data
-frame consisting of the inputs and assigning the columns back to the
-original variables:
-
-<<>>=
-cond2c <- function(a, b, k) {
-    tmp <- data.frame(a, b, k)
-    for (i in names(tmp)) assign(i, tmp[[i]])
-    ifelse(a > b, 
-           a*b + k,  
-           k
-           )
-}
-
-cond2c(5, 3, 1)
-cond2c(5, 7, 1)
-cond2c(3:7, 5, 1)
-cond2c(5, 7, 1:3)
-
-@ 
-
-One drawback of this solution is that we have to be careful to update
-the \lstinline{data.frame()} definition within the function if we
-change the function inputs. It may be easy to overlook this when
-editing the function. The next solution is a more robust version of
-the same idea.
-
-\subsubsection{Create a Vectorization Function}
-
-A final alternative is to create a vectorization function that
-exploits R's functional capabilities and does not require
-modifications if the function definition changes. This approach can
-become quite complicated, but is relatively easy to understand in
-simple cases. We create a \lstinline{vectorizeinputs()} function that
-creates a data frame and vectorizes all variables:
-
-<<>>=
-vectorizeinputs <- function(e) {
-    ## e is the result of match.call() in the calling function
-    e[[1]] <- NULL
-    e <- as.data.frame(as.list(e))
-    for (i in names(e)) assign(i, eval(e[[i]]),
-                               envir=parent.frame())
-}
-@ 
-
-This function assumes that \lstinline{match.call()} has been invoked
-in the calling function. The result of that invocation is manipulated
-to provide information about the parameters passed to the function and
-used to create the data frame and pass the variables back to the
-calling function.
-
-<<>>=
-cond3 <- function(a, b, k) { 
-    vectorizeinputs(match.call())
-    ifelse(a > b, a*b + k, k)
-}
-cond3(5, 7, 1:3)
-cond3(3:7, 5, 1)
-cond3(3:7, 5, 1:5)
-cond3(k=1:5, 3:7, 5)
-
-@ 
-
-This approach becomes more complicated if there are implicit
-parameters in the function. If truly implicit, these will not be
-available via \lstinline{match.call()}, but they can affect the
-solution. Here is an example:
-
-<<>>=
-cond4 <- function(a, b, k, multby2=TRUE) {
-    vectorizeinputs(match.call())
-    ifelse(multby2, 
-           2*(a*b + k), 
-           a*b + k
-           )
-}
-cond4(5, 7, 1:3)
-cond4(3:7, 5, 1)
-cond4(3:7, 5, 1:5)
-cond4(k=1:5, 3:7, 5)
-
-@ 
-
-The output is not vectorized because the implicit parameter
-\lstinline{multby2} is implicit --- it is not explicit in the function
-call --- and therefore it is not vectorized. One way to handle this
-case is to rewrite the \lstinline{vectorizeinputs} function to
-retrieve the full set of function inputs for the called function.
-The name of the function is available through
-\lstinline{match.call()[[1]]}, and the function parameters are
-available using the \lstinline{formals} function. We can then add the
-implicit parameters to the vectorized set of inputs. The function
-\lstinline{vectorizeinputs2} takes this approach:
-
-<<>>=
-vectorizeinputs2 <- function(e) {
-    funcname <- e[[1]]
-    fvals <- formals(eval(funcname))
-    fnames <- names(fvals)
-    e[[1]] <- NULL
-    e <- as.data.frame(as.list(e))
-    implicit <- setdiff(fnames, names(e))
-    if (length(implicit) > 0) e <- data.frame(e, fvals[implicit])
-    for (i in names(e)) assign(i, eval(e[[i]]),
-                               envir=parent.frame())
-}
-
-cond5 <- function(a, b, k, multby2=TRUE, altmult=1) {
-    vectorizeinputs2(match.call())
-    ifelse(multby2, 
-           2*(a*b + k), 
-           altmult*(a*b + k)
-           )
-}
-cond5(5, 7, 1:3)
-cond5(3:7, 5, 1)
-cond5(3:7, 5, 1:5)
-cond5(k=1:5, 3:7, 5)
-cond5(k=1:5, 3:7, 5, multby2=FALSE)
-cond5(k=1:5, 3:7, 5, multby2=FALSE, altmult=5)
-
-@ 
-
-\subsubsection{Why Worry About Vectorization?}
-
-R provides looping constructs and \lstinline{apply} functions. It
-might seem that it's not necessary to worry about vectorization. There
-are two reasons that I choose to vectorize where feasible.
-
-First, I personally find vectorization convenient and transparent. I
-find vectorized code easier to read and it fits the way I like to
-work. This is an aesthetic argument.
-
-Second, in my experience the apply functions are a real hurdle for new
-R users. Automatic vectorization makes it possible to perform
-complicated calculations in a straightforward and intuitive way.
 
 \clearpage
 
 \section{Bibliography}
 \bibliographystyle{book2}
-%\bibliography{rmcd, derivmkts}
+%\bibliography{rmcd}
 \bibliography{derivmkts}
-
 
 
 \end{document}

@@ -1,10 +1,19 @@
+# derivmkts 0.2.2
+
+* Functions for compound options (call on call, call on put, etc.)
+
+* Binomplot: Option for log y axis
+
+* New vignette discussing alternative ways to write vectorized
+  functions
+
 # derivmkts 0.2.1
 
 * Binomopt
 
 	* Fixed: default dn=1.5 in binomopt and binomplot
 	* Added "returnprice" parameter to binomplot
-	
+
 * greeks
 	* Simplification of Greeks discussion in README.Rmd
 	* Greeks function ignores theta when appropriate (perpetual options)
@@ -13,8 +22,8 @@
 
 * Asian options 
 
-	* Added geomavgpricecall, geomavgpriceput, geomavgstrikecall, and
-	  geomavgstrikeput functions.
+	* Added individual geomavgpricecall, geomavgpriceput,
+	  geomavgstrikecall, and geomavgstrikeput functions.
 	* Fixed greeks functionality for asian options
 	
 

@@ -1,4 +1,5 @@
 ## ----echo=FALSE, message=FALSE, warning=FALSE----------------------------
+rm(list=ls())
 library(highlight)
 library(knitr)
 ##homedir <- '/home/rmcd/tex/d67/Rtutorial/'
@@ -16,9 +17,11 @@ opts_knit$set(highlight = TRUE,
               prompt=TRUE,
               renderer=renderer_latex(document=FALSE),
               size='footnotesize')
+curr <- function(amt)  formatC(amt, format='f', digits=2)
 
 ## ----echo=FALSE----------------------------------------------------------
 library(derivmkts)
+library(mnormt)
 library(markdown)
 
 opts_chunk$set(collapse=TRUE)
@@ -32,8 +35,10 @@ bsput(s, c(95, 100, 105), v, r, tt, d)
 ## ------------------------------------------------------------------------
 H <- 115
 bscall(s, c(80, 100, 120), v, r, tt, d)
+## Up-and-in call
 uicall(s, c(80, 100, 120), v, r, tt, d, H)
 bsput(s, c(80, 100, 120), v, r, tt, d)
+## Up-and-out put
 uoput(s, c(80, 100, 120), v, r, tt, d, H)
 
 ## ------------------------------------------------------------------------
@@ -106,6 +111,18 @@ arithavgpricecv(s, k, v, r, tt, d, 3, numsim=5000)
 
 
 ## ------------------------------------------------------------------------
+s <- 100; kuo <- 95; v <- 0.30; r <-  0.08; t1 <- 0.50; t2 <- 0.75; d <- 0
+kco <- 3.50
+
+calloncall(s, kuo, kco, v, r, t1, t2, d, returnscritical=TRUE)
+
+## ------------------------------------------------------------------------
+putoncall(s, kuo, kco, v, r, t1, t2, d, returnscritical=TRUE)
+callonput(s, kuo, kco, v, r, t1, t2, d, returnscritical=TRUE)
+putonput(s, kuo, kco, v, r, t1, t2, d, returnscritical=TRUE)
+
+
+## ------------------------------------------------------------------------
 mertonjump(s, k, v, r, tt, d, lambda=0.5, alphaj=-0.2, vj=0.3)
 c(bscall(s, k, v, r, tt, d), bsput(s, k, v, r, tt, d))
 
@@ -138,128 +155,4 @@ binomplot(s, k, v, r, tt, d, nstep=40, american=TRUE)
 ## ----binomplot4, fig.cap="Binomial plot when nstep is 40 using the argument ylimval to focus on a subset.\\label{fig:binomplot4}"----
 d <- 0.06
 binomplot(s, k, v, r, tt, d, nstep=40, american=TRUE, ylimval=c(75, 225))
-
-## ------------------------------------------------------------------------
-f = function(a, b, k) a*b + k
-f(3, 5, 1) 
-f(1:5, 5, 1) 
-f(1:6, 1:2, 1) 
-
-## ------------------------------------------------------------------------
-cond1 <- function(a, b, k) {
-    if (a > b) {
-        a*b + k
-    } else {
-        k
-    }
-}
-cond1(5, 3, 1)
-cond1(5, 7, 1)
-cond1(3:7, 5, 1)
-
-
-## ------------------------------------------------------------------------
-cond2 <- function(a, b, k) {
-    ifelse(a > b, 
-           a*b + k,  
-           k
-           )
-}
-cond2(5, 3, 1)
-cond2(5, 7, 1)
-cond2(3:7, 5, 1)
-
-
-## ------------------------------------------------------------------------
-cond2(5, 7, 1:3)
-
-## ------------------------------------------------------------------------
-cond2b <- function(a, b, k) {
-    agtb <- (a > b)
-    agtb*(a*b + k) + (1-agtb)*k
-}
-
-cond2b(5, 3, 1)
-cond2b(5, 7, 1)
-cond2b(3:7, 5, 1)
-cond2b(5, 7, 1:3)
-
-
-## ------------------------------------------------------------------------
-cond2c <- function(a, b, k) {
-    tmp <- data.frame(a, b, k)
-    for (i in names(tmp)) assign(i, tmp[[i]])
-    ifelse(a > b, 
-           a*b + k,  
-           k
-           )
-}
-
-cond2c(5, 3, 1)
-cond2c(5, 7, 1)
-cond2c(3:7, 5, 1)
-cond2c(5, 7, 1:3)
-
-
-## ------------------------------------------------------------------------
-vectorizeinputs <- function(e) {
-    ## e is the result of match.call() in the calling function
-    e[[1]] <- NULL
-    e <- as.data.frame(as.list(e))
-    for (i in names(e)) assign(i, eval(e[[i]]),
-                               envir=parent.frame())
-}
-
-## ------------------------------------------------------------------------
-cond3 <- function(a, b, k) { 
-    vectorizeinputs(match.call())
-    ifelse(a > b, a*b + k, k)
-}
-cond3(5, 7, 1:3)
-cond3(3:7, 5, 1)
-cond3(3:7, 5, 1:5)
-cond3(k=1:5, 3:7, 5)
-
-
-## ------------------------------------------------------------------------
-cond4 <- function(a, b, k, multby2=TRUE) {
-    vectorizeinputs(match.call())
-    ifelse(multby2, 
-           2*(a*b + k), 
-           a*b + k
-           )
-}
-cond4(5, 7, 1:3)
-cond4(3:7, 5, 1)
-cond4(3:7, 5, 1:5)
-cond4(k=1:5, 3:7, 5)
-
-
-## ------------------------------------------------------------------------
-vectorizeinputs2 <- function(e) {
-    funcname <- e[[1]]
-    fvals <- formals(eval(funcname))
-    fnames <- names(fvals)
-    e[[1]] <- NULL
-    e <- as.data.frame(as.list(e))
-    implicit <- setdiff(fnames, names(e))
-    if (length(implicit) > 0) e <- data.frame(e, fvals[implicit])
-    for (i in names(e)) assign(i, eval(e[[i]]),
-                               envir=parent.frame())
-}
-
-cond5 <- function(a, b, k, multby2=TRUE, altmult=1) {
-    vectorizeinputs2(match.call())
-    ifelse(multby2, 
-           2*(a*b + k), 
-           altmult*(a*b + k)
-           )
-}
-cond5(5, 7, 1:3)
-cond5(3:7, 5, 1)
-cond5(3:7, 5, 1:5)
-cond5(k=1:5, 3:7, 5)
-cond5(k=1:5, 3:7, 5, multby2=FALSE)
-cond5(k=1:5, 3:7, 5, multby2=FALSE, altmult=5)
-
 
