@@ -41,7 +41,8 @@ tol2 <- 1e-04 ## doesn't seem to make the check work
 test_that('greeks works bscall', {
               correct <- greeksvals[['bscall']]
               unknown <- greeks(bscall(s=s, k=kseq, v=v,
-                                             r=r, tt=tt, d=d))
+                                       r=r, tt=tt, d=d),
+                                initcaps=TRUE)
               expect_equal(correct, unknown, tolerance=tol)
           }
           )
@@ -51,11 +52,11 @@ test_that('tidy greeks works bscall', {
               correct <- greeksvals2[['bscalltidy']]
               unknown <- greeks(bscall(s=s, k=kseq, v=v,
                                        r=r, tt=tt, d=d),
-                                tidy=TRUE)
+                                complete=TRUE, initcaps=FALSE)
               expect_equal(correct, unknown, tolerance=tol)
           }
           )
-print('tidy bscall greeks okay')
+print('complete bscall greeks okay')
 
 
 test_that('greeks2 works bscall', {
@@ -74,33 +75,30 @@ if (barrierchecks) {
         colnames(correct) <- tolower(colnames(correct))
         unknown <-
             greeks2(assetuicall, list(s=40, k=kseq, v=v,
-                                      r=r, tt=tt, d=d, H=Hseq2))
+                                      r=r, tt=tt, d=d, H=Hseq2)
+                    )
         expect_equal(correct, unknown, tolerance=tol2)
     }
     )
     print('assetuicall greeks okay')
-
     test_that('greeks2 works assetuicall', {
         correct <- greeksvals2[['assetuicalltidy']]
         correct$funcname <- tolower(correct$funcname)
         unknown <- greeks(assetuicall(s=s, k=kseq, v=v,
                                       r=r, tt=tt, d=d, H=Hseq2),
-                          tidy=TRUE)
+                          complete=TRUE, initcaps=FALSE)
         expect_equal(correct, unknown, tolerance=tol2)
     }
     )
     print('assetuicall greeks2 okay')
-
-    
     test_that('greeks2 works assetuicall', {
         correct <- greeksvals2[['assetuicall']]
         colnames(correct) <- tolower(colnames(correct))
         unknown <- greeks(assetuicall(s=s, k=kseq, v=v,
-                                      r=r, tt=tt, d=d, H=Hseq2))
+                                      r=r, tt=tt, d=d, H=Hseq2),
+                          initcaps=TRUE)
         expect_equal(correct, unknown, tolerance=tol2)
     }
     )
     print('assetuicall greeks2 okay')
-
-
 }

@@ -26,6 +26,15 @@ library(markdown)
 
 opts_chunk$set(collapse=TRUE)
 
+## ----eval=FALSE----------------------------------------------------------
+#  library(derivmkts)
+#  library(microbenchmark)
+#  S <- seq(0.5, 250, by=0.5)
+#  bsv <- Vectorize(bscall)
+#  microbenchmark(out1 <- bsv(S, 40, .3, .08, .25, 0))
+#  microbenchmark(out2 <- bscall(S, 40, .3, .08, .25, 0))
+#  all.equal(out1, out2)
+
 ## ------------------------------------------------------------------------
 f = function(a, b, k) a*b + k
 f(3, 5, 1) 

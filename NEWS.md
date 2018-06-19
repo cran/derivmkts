@@ -1,16 +1,35 @@
+# derivmkts 0.2.3
+
+* greeks `tidy` option renamed to `complete`
+
+* Added options to `greeks`: 
+  * `complete` if `TRUE`, return all inputs and greeks for each case 
+* greeks `tidy` option renamed to `complete`. By default, this returns wide form results
+  * `long` (if `complete=TRUE`, return long form output)
+  * `initcaps`: capitalize "Delta", "Gamma", etc.
+
+* Breaking change:
+  * option value is now returned as "premium" rather than "price";
+    the term "price" is ambiguous (e.g. a futures price is 100 but
+    the value of the contract --- the premium --- is 0)
+
+* Fixed greeks `elast` calculation for barrier options --- would return Inf when
+ close to out barrier (fixelast branch)
+
+* added dependency on `testthat`
+
 # derivmkts 0.2.2.1
 
 Primarily a maintenance release with one new feature (tidy output)
 
-* Added `tidygreeks` parameter to `greeks` function to return output
-  in tidy format. This is `FALSE` by default, for compatability. Still
-  need to add test for this output
+* Added `tidy` parameter to `greeks` function to return output in wide
+  tidy format. This is `FALSE` by default, for compatability.
 
-* Fixed: if a parameter in the function passed to greeks uses the
+* Fix: if a parameter in the function passed to greeks uses the
   index "i", the eval step in Greeks fails (because the eval loop
-  also uses "i". The index variable cannot be `z91k25`
+  also uses "i"). The index variable is now `z91k25`
 
-* Fixed: spurious "break" in implied.Ri
+* Fix: spurious "break" in implied.R
    
 # derivmkts 0.2.2
 

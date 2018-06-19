@@ -8,10 +8,6 @@ figsize <- 4.5
 opts_chunk$set(size='footnotesize', prompt=FALSE, comment=NA,
                fig.align='center', fig.width = figsize,
                fig.height=figsize, out.width='3.75in')
-
-#              , fig.width=4.5*3.75/3.25, fig.height=4.5,
-#              , out.width='3.75in', out.height='3.25in'
-#               )
 opts_knit$set(highlight = TRUE,
               eval.after='fig.cap',
               prompt=TRUE,
@@ -69,7 +65,7 @@ greeks(bullspread(39:41, .3, .08, 1, 0, k1=40, k2=45))
 
 ## ----bullgamma, fig.cap='Gamma for a 40-45 bull spread.'-----------------
 sseq <- seq(1, 100, by=0.5)
-x <- greeks(bullspread(sseq, .3, .08, 1, 0, k1=40, k2=45))
+x <- greeks(bullspread(sseq, .3, .08, 1, 0, k1=40, k2=45), initcaps=TRUE)
 plot(sseq, x['Gamma',], type='l')
 
 

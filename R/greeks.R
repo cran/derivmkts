@@ -15,7 +15,7 @@
 #' @aliases bsopt greeks greeks2
 #'
 #' @return A named list of Black-Scholes option prices and Greeks, or
-#'     optionally (`tidy=TRUE`) a long-form dataframe.
+#'     optionally (`complete=TRUE`) a dataframe.
 #' @note The pricing function being passed to the greeks function must
 #'     return a numeric vector. For example, \code{callperpetual} must
 #'     be called with the option \code{showbarrier=FALSE} (the
@@ -26,16 +26,15 @@
 #'     cases. It might be good to use the package numDeriv or some
 #'     other more sophisticated calculation, but the current approach
 #'     works well with vectorization.
-#' 
+#'
 #' @usage
-#' greeks(f, tidy=FALSE)
+#' greeks(f, complete=FALSE, long=FALSE, initcaps=TRUE)
 #' # must used named list entries:
 #' greeks2(fn, ...)
 #' bsopt(s, k, v, r, tt, d)
 #'
-#' @param s Price of underlying asset c#' @param k Strike price of the
-#'     option
-#' @param k Option strike price 
+#' @param s Price of underlying asset
+#' @param k Option strike price
 #' @param v Volatility of the underlying asset, defined as the
 #'     annualized standard deviation of the continuously-compounded
 #'     return
@@ -47,17 +46,24 @@
 #' @param f Fully-specified option pricing function, including inputs
 #'     which need not be named. For example, you can enter
 #'     \code{greeks(bscall(40, 40, .3, .08, .25, 0))}
-#' @param tidy FALSE. If TRUE, return a data frame with columns
-#'     equal to input parameters, function name, price, and greeks, in
-#'     semi-long format (each greek is a column). This is experimental
-#'     and the output may change. Can convert to true long format with
-#'     a call to tidyr::gather (see examples).
+#' @param complete FALSE. If TRUE, return a data frame with columns
+#'     equal to input parameters, function name, premium, and greeks
+#'     (each greek is a column). This is experimental and the output
+#'     may change. Convert to long format using \code{long=TRUE}.
+#' @param long FALSE. If \code{complete=TRUE}, then \code{long=TRUE} will
+#'     return a long data frame, where each row contains input
+#'     parameters, function name, and either the premium or one of the
+#'     greeks
+#' @param initcaps TRUE. If true, capitalize names (e.g. "Delta" vs
+#'     "delta")
 #' @param ... Pricing function inputs, must be named, may either be a
 #'     list or not
-#' 
+#'
+#' @importFrom stats reshape
+#'
 #' @examples
 #' s=40; k=40; v=0.30; r=0.08; tt=0.25; d=0;
-#' greeks(bscall(s, k, v, r, tt, d))
+#' greeks(bscall(s, k, v, r, tt, d), complete=FALSE, long=FALSE, initcaps=TRUE)
 #' greeks2(bscall, list(s=s, k=k, v=v, r=r, tt=tt, d=d))
 #' greeks2(bscall, list(s=s, k=k, v=v, r=r, tt=tt, d=d))[c('Delta', 'Gamma'), ]
 #' bsopt(s, k, v, r, tt, d)
@@ -80,11 +86,10 @@
 #'     }
 #' }
 #' \dontrun{
-#' ## Tidy version for calls
-#' library(tidyr); library(ggplot2)
-#' call_long <- greeks(bscall(S, k, v, r, tt, d), tidy=TRUE)
-#' call_long <- tidyr::gather(call_long, key='greek', value='value', -(s:funcname))
-#' ggplot(call_long, aes(x=s, y=value)) + geom_line() + facet_wrap(~greek, scales='free')
+#' ## Using complete option for calls
+#' call_long <- greeks(bscall(S, k, v, r, tt, d), complete=TRUE, long=TRUE)
+#' ggplot2::ggplot(call_long, aes(x=s, y=value)) +
+#'       geom_line() + facet_wrap(~greek, scales='free')
 #' }
 
 #' @export
@@ -99,7 +104,7 @@ bsopt <- function(s, k, v, r, tt, d) {
 ## the focus so far has been on named vs unnamed parameters. We also
 ## need to take care of implicit parameters Tue, Jun 21, 2016
 #' @export
-greeks <- function(f, tidy=FALSE) {
+greeks <- function(f, complete=FALSE, long=FALSE, initcaps=TRUE) {
     ## match.call() returns (I think) a pairlist, where the first
     ## argument is the function and the second is what follows. By
     ## extracting the second, we grab the function argument which in
@@ -131,7 +136,7 @@ greeks <- function(f, tidy=FALSE) {
         ##  restrict range in setdiff to account for implicit
         ##  parameters in fnames but not in function call
         names(args)[which(names(args) == "")] <-
-            setdiff(fnames, names(args))[1:numunnamedargs] 
+            setdiff(fnames, names(args))[1:numunnamedargs]
     }
     x <- as.list(args)
     ## some elements of x will have had explicit values in the call
@@ -147,34 +152,55 @@ greeks <- function(f, tidy=FALSE) {
     xlength <- sapply(x, length)
     xmaxlength <- max(xlength)
     includetheta <- rep(includetheta, xmaxlength)
-    prem  <-  do.call(funcname, x)
-    delta <-  .FirstDer(funcname, 's', x)
-    vega  <-  .FirstDer(funcname, 'v', x)/100
-    rho   <-  .FirstDer(funcname, 'r', x)/100
-    theta <- ifelse(includetheta,
+    Premium  <-  do.call(funcname, x)
+    Delta <-  .FirstDer(funcname, 's', x)
+    Vega  <-  .FirstDer(funcname, 'v', x)/100
+    Rho   <-  .FirstDer(funcname, 'r', x)/100
+    Theta <- ifelse(includetheta,
                     -.FirstDer(funcname, 'tt', x)/365,
                     NA)
-    psi   <-  .FirstDer(funcname, 'd', x)/100
-    elast <-  x[['s']]*delta/prem
-    gamma <-  .SecondDer(funcname, 's', x)
-    if (tidy) {
+    Psi   <-  .FirstDer(funcname, 'd', x)/100
+    Elast <-  ifelse(Premium > 1e-06, x[['s']]*Delta/Premium, NA)
+    Gamma <-  .SecondDer(funcname, 's', x)
+    if (complete) {
         ## Note: this will not work with a tibble, which doesn't
         ## support recycling for vectors longer than length 1
-        return(cbind(as.data.frame(x, stringsAsFactors=FALSE),
-                     funcname, prem, delta, vega,
-                     rho, theta, psi, elast, gamma,
-               stringsAsFactors=FALSE))
+        tmp <- cbind(as.data.frame(x, stringsAsFactors=FALSE),
+                     funcname, Premium, Delta, Vega,
+                     Rho, Theta, Psi, Elast, Gamma,
+                     stringsAsFactors=FALSE)
+        if (long) {
+            premcol <- which(colnames(tmp) == 'premium')
+            gammacol <- which(colnames(tmp) == 'gamma')
+            greekcols <- which(colnames(tmp) %in%
+                               c('Premium', 'Delta', 'Vega',
+                                 'Rho', 'Theta', 'Psi', 'Elast',
+                                 'Gamma'))
+            tmp <- stats::reshape(tmp,
+                                  direction='long',
+                                  ##varying=premcol:gammacol,
+                                  varying=greekcols,
+                                  v.names='value',
+                                  timevar='greek',
+                                  ##times=names(tmp)[premcol:gammacol])
+                                  times=names(tmp)[greekcols]
+                                  )
+            }
+        row.names(tmp) <- NULL
+        tmp[['id']] <- NULL
+        if (!initcaps) colnames(tmp) <- tolower(colnames(tmp))
+        return(tmp)
     } else {
-        numcols <- length(prem)
+        numcols <- length(Premium)
         numrows <- 8
-        y <- t(matrix(c(prem,delta,gamma,vega,rho,theta,psi,elast),
+        y <- t(matrix(c(Premium,Delta,Gamma,Vega,Rho,Theta,Psi,Elast),
                       nrow=numcols,ncol=numrows))
-        rownames(y) <- c("Price", "Delta", "Gamma", "Vega", "Rho", "Theta",
+        rownames(y) <- c("Premium", "Delta", "Gamma", "Vega", "Rho", "Theta",
                          "Psi", "Elasticity")
-        
+
         ## The following tests to see if there is variation in any inputs
         ## (is xmaxlength > 1). If so, is there variation in more than one
-        ## input (length(maxarg) > 1). The column names are constructed 
+        ## input (length(maxarg) > 1). The column names are constructed
         ## in each case to state the parameter values for that column.
         arggt1 <- which(xlength > 1) # which inputs are vectors
         if (xmaxlength == 1) {
@@ -188,6 +214,7 @@ greeks <- function(f, tidy=FALSE) {
             }
             colnames(y) <- paste(funcname, tmp, sep='')
         }
+        if (!initcaps) rownames(y) <- tolower(rownames(y))
         return(y)
     }
 }
@@ -202,20 +229,20 @@ greeks2 <- function(fn, ...) {
     includetheta <- ('tt' %in% names(x))
     ## make sure recycling rule will work, stop if not
     .checkListRecycle(x)
-    prem  <-  do.call(fn, x)
+    premium  <-  do.call(fn, x)
     delta <-  .FirstDer(fn, 's', x)
     vega  <-  .FirstDer(fn, 'v', x)/100
     rho   <-  .FirstDer(fn, 'r', x)/100
     if (includetheta) theta <- -.FirstDer(fn, 'tt', x)/365
     else theta <- NA
     psi   <-  .FirstDer(fn, 'd', x)/100
-    elast <-  x[['s']]*delta/prem
+    elast <-  x[['s']]*delta/premium
     gamma <-  .SecondDer(fn, 1, x)
-    numcols <- length(prem)
+    numcols <- length(premium)
     numrows <- 8
-    y <- t(matrix(c(prem,delta,gamma,vega,rho,theta,psi,elast),
+    y <- t(matrix(c(premium,delta,gamma,vega,rho,theta,psi,elast),
                   nrow=numcols,ncol=numrows))
-    rownames(y) <- c("Price", "Delta", "Gamma", "Vega", "Rho", "Theta",
+    rownames(y) <- c("Premium", "Delta", "Gamma", "Vega", "Rho", "Theta",
                      "Psi", "Elasticity")
     funcname <- as.character(match.call()[[2]])
 
@@ -246,7 +273,7 @@ greeks2 <- function(fn, ...) {
 .FirstDer <- function(fn, pos, arglist) {
     ## compute first derivative of function fn
     ## arglist must be a list
-    epsilon <- 1e-04 
+    epsilon <- 1e-04
     xup <- xdn <- arglist
     xup[[pos]] <- xup[[pos]] + epsilon
     xdn[[pos]] <- xdn[[pos]] - epsilon
@@ -260,7 +287,7 @@ greeks2 <- function(fn, ...) {
     ##   compute second derivative of function fn
     if (is.list(c(...))) arglist <- c(...)
     else arglist <- list(...)
-    epsilon <- 5e-04 
+    epsilon <- 5e-04
     xup <- xdn <- arglist
     xup[[pos]] <- xup[[pos]] + epsilon
     xdn[[pos]] <- xdn[[pos]] - epsilon
