@@ -2,6 +2,9 @@
 rm(list=ls())
 library(highlight)
 library(knitr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
 ##homedir <- '/home/rmcd/tex/d67/Rtutorial/'
 options(digits=4)
 figsize <- 4.5
@@ -65,24 +68,21 @@ greeks(bullspread(39:41, .3, .08, 1, 0, k1=40, k2=45))
 
 ## ----bullgamma, fig.cap='Gamma for a 40-45 bull spread.'-----------------
 sseq <- seq(1, 100, by=0.5)
-x <- greeks(bullspread(sseq, .3, .08, 1, 0, k1=40, k2=45), initcaps=TRUE)
-plot(sseq, x['Gamma',], type='l')
+greeks(bullspread(sseq, .3, .08, 1, 0, k1=40, k2=45),
+            initcaps = TRUE, long = TRUE) %>%
+    filter(greek == 'Gamma' ) %>% 
+    ggplot(aes(x = s, y = value)) + geom_line()
 
-
-## ----allgreeks, fig.cap='All option Greeks, computed using the greeks() function', fig.width=7.5, fig.height=6.5----
+## ----allgreeks, fig.cap='All option Greeks for a call and a put, computed using the greeks function', out.height='6in', out.width='5in'----
 k <- 100; r <- 0.08; v <- 0.30; tt <- 2; d <- 0
-S <- seq(.5, 250, by=.5)
-Call <- greeks(bscall(S, k, v, r, tt, d))
-Put <- greeks(bsput(S, k, v, r, tt, d))
-y <- list(Call=Call, Put=Put)
-par(mfrow=c(4, 4))  ## create a 4x4 plot
-par(mar=c(2,2,2,2))
-for (i in names(y)) {
-    for (j in rownames(y[[i]])) {  ## loop over greeks
-        plot(S, y[[i]][j, ], main=paste(i, j), ylab=j, type='l')
-    }
-}
-
+S <- seq(.5, 200, by=.5)
+Call <- greeks(bscall(S, k, v, r, tt, d), long = TRUE)
+Put <- greeks(bsput(S, k, v, r, tt, d), long = TRUE)
+ggplot(rbind(Call, Put), aes(x = s, y = value, color = funcname )) +
+    geom_line() + facet_wrap(~ greek, scales = 'free_y') +
+    scale_color_discrete(name = 'Option', labels = c('Call','Put' )) +
+    scale_x_continuous('Stock', breaks =c(0, 100, 200)  ) +
+    scale_y_continuous('Value') 
 
 ## ------------------------------------------------------------------------
 s <- 100; k <- 100; r <- 0.08; v <- 0.30; tt <- 2; d <- 0.03
@@ -132,23 +132,63 @@ duration(price, coupon, mat, principal, freq, modified)
 convexity(price, coupon, mat, principal, freq)
 
 
+## ----fivepaths, fig.cap='Five simulated paths for the same stock, no jumps.'----
+s0 <- 100; v <- 0.3; r <- 0.10; d <- 0; tt <- 1
+trials <- 5; periods <- 365; set.seed(1)
+s <- simprice(s0 = s0, v = v, r = r, tt = tt, d = d, trials = trials,
+              periods = periods, jump = FALSE, long = TRUE)
+ggplot(s, aes(x = period, y = price, color = trial, group = trial)) + geom_line()
+
+## ----fivejumpers, fig.cap='Five simulated paths for the same stock, which can jump.'----
+s0 <- 100; v <- 0.3; r <- 0.10; d <- 0; tt <- 1
+trials <- 5; periods <- 365; jump <- TRUE; lambda <- 2;
+alphaj <- -0.1; vj <- 0.2; set.seed(1)
+s <- simprice(s0 = s0, v = v, r = r, tt = tt, d = d, trials = trials,
+              periods = periods, jump = jump, alphaj = alphaj,
+              lambda = lambda, vj = vj, long = TRUE)
+ggplot(s, aes(x = period, y = price, color = trial, group = trial)) + geom_line()
+
+## ---- eval=TRUE----------------------------------------------------------
+set.seed(1)
+vi <- diag(3)
+tt <- 2; periods <- tt*365
+diag(vi) <- c(.6, .2, .45)
+vc <- matrix(c(1, .4, -.3,
+              .4, 1, .25,
+              -.3, .25, 1), nrow = 3) 
+v <- vi %*% vc %*% vi
+s <- simprice(s0 = s0, v = v, r = r, tt = tt, d = d, trials = 1,
+              periods = periods, jump = FALSE, long = TRUE)
+
+threestocks <- s %>%
+    filter(trial == 1) %>%
+    group_by(asset) %>%
+    mutate(ret = log(price/lag(price)),
+           row = row_number()) %>%
+    select(asset, period, ret) %>%
+    spread(key = asset, value = ret )
+
+var(threestocks[2:4], na.rm = TRUE)*365
+v
+
 ## ----quincunx, fig.cap='Output from the Quincunx function'---------------
 par(mar=c(2,2,2,2))
 quincunx(n=20, numballs=200, delay=0, probright=0.7)
 
-## ----binomplot1, fig.cap='Basic option plot showing stock prices and nodes at which the option is exercised.\\label{fig:binomplot1}'----
-binomplot(s, k, v, r, tt, d, nstep=6, american=TRUE, putopt=TRUE)
+## ----binomplot1, fig.cap='Basic option plot showing stock prices and nodes at which the option is exercised.'----
+s0 <- 100; k <- 100; v <- 0.3; r <- 0.08; tt <- 2; d <- 0
+binomplot(s0, k, v, r, tt, d, nstep=6, american=TRUE, putopt=TRUE)
 
 
-## ----binomplot2, fig.cap='Same plot as Figure \\ref{fig:binomplot1} except that values and arrows are added to the plot.\\label{fig:binomplot2}'----
-binomplot(s, k, v, r, tt, d, nstep=6, american=TRUE, putopt=TRUE,
+## ----binomplot2, fig.cap='Same plot as Figure \\ref{fig:binomplot1} except that values and arrows are added to the plot.'----
+binomplot(s0, k, v, r, tt, d, nstep=6, american=TRUE, putopt=TRUE,
     plotvalues=TRUE, plotarrows=TRUE)
 
-## ----binomplot3, fig.cap="Binomial plot when nstep is 40.\\label{fig:binomplot3}"----
+## ----binomplot3, fig.cap="Binomial plot when nstep is 40."---------------
 d <- 0.06
-binomplot(s, k, v, r, tt, d, nstep=40, american=TRUE)
+binomplot(s0, k, v, r, tt, d, nstep=40, american=TRUE)
 
-## ----binomplot4, fig.cap="Binomial plot when nstep is 40 using the argument ylimval to focus on a subset.\\label{fig:binomplot4}"----
+## ----binomplot4, fig.cap="Binomial plot when nstep is 40 using the argument ylimval to focus on a subset."----
 d <- 0.06
-binomplot(s, k, v, r, tt, d, nstep=40, american=TRUE, ylimval=c(75, 225))
+binomplot(s0, k, v, r, tt, d, nstep=40, american=TRUE, ylimval=c(75, 225))
 

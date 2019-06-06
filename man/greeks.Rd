@@ -38,10 +38,10 @@ equal to input parameters, function name, premium, and greeks
 (each greek is a column). This is experimental and the output
 may change. Convert to long format using \code{long=TRUE}.}
 
-\item{long}{FALSE. If \code{complete=TRUE}, then \code{long=TRUE} will
-return a long data frame, where each row contains input
-parameters, function name, and either the premium or one of the
-greeks}
+\item{long}{FALSE. Setting \code{long=TRUE} returns a long data
+frame, where each row contains input parameters, function name,
+and either the premium or one of the greeks. \code{long=TRUE}
+implies \code{complete=TRUE}}
 
 \item{initcaps}{TRUE. If true, capitalize names (e.g. "Delta" vs
 "delta")}
@@ -105,7 +105,7 @@ for (i in names(y)) {
 }
 \dontrun{
 ## Using complete option for calls
-call_long <- greeks(bscall(S, k, v, r, tt, d), complete=TRUE, long=TRUE)
+call_long <- greeks(bscall(S, k, v, r, tt, d), long=TRUE)
 ggplot2::ggplot(call_long, aes(x=s, y=value)) +
       geom_line() + facet_wrap(~greek, scales='free')
 }
