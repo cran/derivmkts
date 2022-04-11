@@ -6,7 +6,7 @@
 #' pegboard with a 50\% chance of bouncing right or left at each
 #' level. The balls accumulate in bins. If enough balls are dropped,
 #' the distribution approaches normality. This device is called a
-#' quincunx. See \url{http://www.mathsisfun.com/data/quincunx.html}
+#' quincunx. See \url{https://www.mathsisfun.com/data/quincunx.html}
 #'
 #'
 #' @param n  Integer The number of peg levels, default is 3
@@ -40,6 +40,12 @@ quincunx <- function(n=3, numballs=20, delay=0.1,
                      probright=0.5, plottrue=TRUE) {
     ## inputs: n: number of binomial steps, number of balls, 
     ## time delay for plotting
+    if (exists(".Random.seed", .GlobalEnv)) {
+        oldseed <- .Random.seed
+        savedseed <- TRUE
+    } else {
+        savedseed <- FALSE
+    }
     nlev <- n + 1 ## number of levels
     tbl <- array(0, dim=nlev)
     names(tbl) <- 0:(n)
@@ -82,5 +88,6 @@ quincunx <- function(n=3, numballs=20, delay=0.1,
         num <- choose(n, k)*probright^k*(1-probright)^(n-k)*numballs
         points(h, num, cex=3, xlim=c(0, n), pch=1)
     }
+    if (savedseed) .GlobalEnv$.Random.seed <- oldseed
 }
 

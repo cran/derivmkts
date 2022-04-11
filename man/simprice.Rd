@@ -58,14 +58,14 @@ A dataframe with \code{trials} simulated stock price paths
     paths, with or without jumps. Saves and restores random number
     seed.
 
-\code{simprice(s0, v, r, tt, d, trials, periods = 1, jump = FALSE,
-lambda = 0, alphaj = 0, vj = 0, seed = NULL, long = TRUE,
-scalar_v_is_stddev = TRUE)}
+\code{simprice(s0 = 100, v = 0.3, r = .08, tt = 1, d = 0, trials =
+2, periods = 3, jump = FALSE, lambda = 0, alphaj = 0, vj = 0, seed
+= NULL, long = TRUE, scalar_v_is_stddev = TRUE)}
 }
 \examples{
 # simple Monte Carlo option price example. Since there are two
-# periods we can compute options prices for \\code{tt} and
-# \\code{tt/2}
+# periods we can compute options prices for \code{tt} and
+# \code{tt/2}
 s0=40; k=40; v=0.30; r=0.08; tt=0.25; d=0;
 st = simprice(s0, k, v, r, tt, d,  trials=3, periods=2, jump=FALSE)
 callprice1 = exp(-r*tt/2)*mean(pmax(st[st$period==1,] - k, 0))
