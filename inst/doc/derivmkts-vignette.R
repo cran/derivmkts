@@ -1,11 +1,11 @@
 ## ----echo=FALSE, message=FALSE, warning=FALSE---------------------------------
 rm(list=ls())
-library(pander)
 library(bookdown)
 library(knitr)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(kableExtra)
 ##homedir <- '/home/rmcd/tex/d67/Rtutorial/'
 options(digits=4)
 figsize <- 4.5
@@ -44,9 +44,9 @@ bstbl <- data.frame(
             vega, theta, rho, psi, and elasticity', 'Asset-or-nothing call',
             'Asset-or-nothing put', 'Cash-or-nothing call',
             'Cash-or-nothing put'))
-pander(bstbl,
-       caption = 'Black-Scholes related option pricing functions\\label{tab:bslist}',
-      split.cell = 60, justify = c('center', 'left'))
+kbl(bstbl, caption = 'Black-Scholes related option pricing functions',
+    booktabs=TRUE) |>
+    kable_styling()
 
 ## -----------------------------------------------------------------------------
 H <- 115
@@ -123,7 +123,7 @@ arithasianmc(s, k, v, r, tt, d, 3, numsim=5000, printsds=TRUE)
 arithavgpricecv(s, k, v, r, tt, d, 3, numsim=5000)
 
 
-## ---- include=FALSE-----------------------------------------------------------
+## ----include=FALSE------------------------------------------------------------
 compound.caption <- 'The timeline for a compound option: a call to buy a  put. The compound option expires at time $t_{1}$ and the  underlying asset is a put option that expires at time  $t_{2}$. At time $t_{1}$, the owner decides whether to pay  $k_{co}$ to buy a put option which has time to expiration $t_{2} - t_{1}$. At time $t_{2}$ the owner decides whether to exercise the put, selling the stock for the strike price of $k_{uo}$.'
 #  \label{fig:compoundopt}
 #\end{figure}
@@ -189,7 +189,7 @@ ggplot(s, aes(x = period, y = price, group = asset, color = asset)) +
     geom_line()
 
 
-## ---- eval=TRUE---------------------------------------------------------------
+## ----eval=TRUE----------------------------------------------------------------
 set.seed(1)
 tt <- 2; periods <- tt*365
 
